@@ -104,6 +104,12 @@ export const convertIntoAltNodes = (
       ) {
         return frameNodeToAlt(node, altParent);
       } else if (node.type === "GROUP") {
+        if (node.children.length === 1 && node.visible !== false) {
+          // if Group is visible and has only one child, Group should disappear.
+          // there will be a single value anyway.
+          return convertIntoAltNodes(node.children, altParent)[0];
+        }
+
         const altNode = new AltGroupNode();
 
         altNode.id = node.id;
@@ -172,8 +178,11 @@ const convertLayout = (altNode: AltLayoutMixin, node: LayoutMixin) => {
 const convertFrame = (altNode: AltFrameMixin, node: DefaultFrameMixin) => {
   altNode.layoutMode = node.layoutMode;
   altNode.counterAxisSizingMode = node.counterAxisSizingMode;
-  altNode.horizontalPadding = node.horizontalPadding;
-  altNode.verticalPadding = node.verticalPadding;
+
+  altNode.paddingLeft = node.horizontalPadding;
+  altNode.paddingRight = node.horizontalPadding;
+  altNode.paddingTop = node.verticalPadding;
+  altNode.paddingBottom = node.verticalPadding;
 
   altNode.itemSpacing = node.itemSpacing;
   altNode.layoutGrids = node.layoutGrids;

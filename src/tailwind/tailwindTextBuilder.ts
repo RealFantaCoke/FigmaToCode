@@ -1,19 +1,26 @@
+import { commonLineHeight } from "./../common/commonTextHeightSpacing";
 import { tailwindTextSize } from "./builderImpl/tailwindTextSize";
 import { AltTextNode } from "../altNodes/altMixins";
 import {
-  pxToMapLetterSpacing,
-  pxToAbsoluteLineHeight,
+  pxToLetterSpacing,
+  pxToLineHeight,
   pxToFontSize,
-  percentToAbsoluteLineHeight,
 } from "./conversionTables";
 import { TailwindDefaultBuilder } from "./tailwindDefaultBuilder";
+import { commonLetterSpacing } from "../common/commonTextHeightSpacing";
 
 export class TailwindTextBuilder extends TailwindDefaultBuilder {
   constructor(optIsJSX: boolean, node: AltTextNode, showLayerName: boolean) {
     super(optIsJSX, node, showLayerName);
   }
 
+  // must be called before Position method
   textAutoSize(node: AltTextNode): this {
+    if (node.textAutoResize === "NONE") {
+      // going to be used for position
+      this.hasFixedSize = true;
+    }
+
     this.attributes += tailwindTextSize(node);
     return this;
   }
@@ -70,18 +77,12 @@ export class TailwindTextBuilder extends TailwindDefaultBuilder {
    * example: tracking-widest
    */
   letterSpacing(node: AltTextNode): this {
-    if (node.letterSpacing !== figma.mixed && node.letterSpacing.value !== 0) {
-      if (node.letterSpacing.unit === "PIXELS") {
-        const value = pxToMapLetterSpacing(node.letterSpacing.value);
-        this.attributes += `tracking-${value} `;
-      } else {
-        // node.letterSpacing.unit === "PERCENT"
-
-        // divide by 10 so it works as expected visually.
-        const value = pxToMapLetterSpacing(node.letterSpacing.value / 10);
-        this.attributes += `tracking-${value} `;
-      }
+    const letterSpacing = commonLetterSpacing(node);
+    if (letterSpacing > 0) {
+      const value = pxToLetterSpacing(letterSpacing);
+      this.attributes += `tracking-${value} `;
     }
+
     return this;
   }
 
@@ -90,23 +91,10 @@ export class TailwindTextBuilder extends TailwindDefaultBuilder {
    * example: leading-3
    */
   lineHeight(node: AltTextNode): this {
-    if (
-      node.lineHeight !== figma.mixed &&
-      node.lineHeight.unit !== "AUTO" &&
-      node.lineHeight.value !== 0
-    ) {
-      if (node.lineHeight.unit === "PIXELS") {
-        // rollup has issues when ` ${method(\n...\n)} `, so this value declaration is necessary
-        const value = pxToAbsoluteLineHeight(node.lineHeight.value);
-        this.attributes += `leading-${value} `;
-      } else {
-        // node.lineHeight.unit === "PERCENT"
-        const value = percentToAbsoluteLineHeight(node.lineHeight.value);
-        this.attributes += `leading-${value} `;
-      }
-      // else if (node.lineHeight.unit === "AUTO") {
-      // default, ignore
-      // }
+    const lineHeight = commonLineHeight(node);
+    if (lineHeight > 0) {
+      const value = pxToLineHeight(lineHeight);
+      this.attributes += `leading-${value} `;
     }
 
     return this;
@@ -170,7 +158,9 @@ export class TailwindTextBuilder extends TailwindDefaultBuilder {
 }
 
 // Convert generic named weights to numbers, which is the way tailwind understands
-export const convertFontWeight = (weight: string): string => {
+export const convertFontWeight = (
+  weight: string
+): "100" | "200" | "300" | "400" | "500" | "600" | "700" | "800" | "900" => {
   weight = weight.toLowerCase();
   switch (weight) {
     case "thin":
@@ -185,9 +175,13 @@ export const convertFontWeight = (weight: string): string => {
       return "500";
     case "semi bold":
       return "600";
+    case "semibold":
+      return "600";
     case "bold":
       return "700";
     case "extra bold":
+      return "800";
+    case "heavy":
       return "800";
     case "black":
       return "900";

@@ -23,10 +23,6 @@ export class FlutterDefaultBuilder {
     this.child = optChild;
   }
 
-  // reset(): void {
-  //   this.child = "";
-  // }
-
   createContainer(
     node: AltRectangleNode | AltEllipseNode | AltFrameNode | AltGroupNode,
     material: boolean
@@ -49,7 +45,7 @@ export class FlutterDefaultBuilder {
     return this;
   }
 
-  containerPosition(node: AltSceneNode, parentId: string): this {
+  position(node: AltSceneNode, parentId: string): this {
     this.child = flutterPosition(node, this.child, parentId);
     return this;
   }

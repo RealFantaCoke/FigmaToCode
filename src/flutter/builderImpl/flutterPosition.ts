@@ -1,5 +1,7 @@
 import { AltSceneNode } from "../../altNodes/altMixins";
 import { commonPosition } from "../../common/commonPosition";
+import { numToAutoFixed } from "../../common/numToAutoFixed";
+import { parentCoordinates } from "../../common/parentCoordinates";
 
 export const flutterPosition = (
   node: AltSceneNode,
@@ -7,7 +9,7 @@ export const flutterPosition = (
   parentId: string = ""
 ): string => {
   // avoid adding Positioned() when parent is not a Stack(), which can happen at the beggining
-  if (!node.parent || parentId === node.parent.id) {
+  if (!node.parent || parentId === node.parent.id || child === "") {
     return child;
   }
 
@@ -19,11 +21,10 @@ export const flutterPosition = (
     } else {
       // this is necessary because Group have absolute position, while Frame is relative.
       // output is always going to be relative to the parent.
-      const parentX = "layoutMode" in node.parent ? 0 : node.parent.x;
-      const parentY = "layoutMode" in node.parent ? 0 : node.parent.y;
+      const [parentX, parentY] = parentCoordinates(node.parent);
 
-      const diffX = node.x - parentX;
-      const diffY = node.y - parentY;
+      const diffX = numToAutoFixed(node.x - parentX);
+      const diffY = numToAutoFixed(node.y - parentY);
 
       return `Positioned(left: ${diffX}, top: ${diffY}, child: ${child}),`;
     }

@@ -1,7 +1,9 @@
+import { commonLetterSpacing } from "./../common/commonTextHeightSpacing";
 import { FlutterDefaultBuilder } from "./flutterDefaultBuilder";
 import { AltTextNode } from "../altNodes/altMixins";
 import { convertFontWeight } from "../tailwind/tailwindTextBuilder";
 import { flutterColor } from "./builderImpl/flutterColor";
+import { numToAutoFixed } from "../common/numToAutoFixed";
 
 export class FlutterTextBuilder extends FlutterDefaultBuilder {
   constructor(optChild: string = "") {
@@ -21,29 +23,6 @@ export class FlutterTextBuilder extends FlutterDefaultBuilder {
     this.child = wrapTextAutoResize(node, this.child);
     return this;
   }
-
-  /**
-   */
-  // todo bring it back
-  // textAlign(node: AltTextNode): this {
-  //   // if layoutAlign !== MIN, Text will be wrapped by Align
-  //   // if alignHorizontal is LEFT, don't do anything because that is native
-
-  //   // const alignHorizontal = node.textAlignHorizontal.toString().toLowerCase();
-
-  //   // if (
-  //   //   node.textAlignHorizontal !== "LEFT"
-  //   // ) {
-  //   //   this.attributes += `text-${alignHorizontal} `;
-  //   // }
-
-  //   return this;
-  // }
-
-  textInAlign(node: AltTextNode): this {
-    // this.child = wrapTextInsideAlign(node, this.child);
-    return this;
-  }
 }
 
 export const makeTextComponent = (node: AltTextNode): string => {
@@ -53,10 +32,10 @@ export const makeTextComponent = (node: AltTextNode): string => {
   alignHorizontal =
     alignHorizontal === "justified" ? "justify" : alignHorizontal;
 
-  // if layoutAlign !== MIN, Text will be wrapped by Align
+  // todo if layoutAlign !== MIN, Text will be wrapped by Align
   // if alignHorizontal is LEFT, don't do anything because that is native
   const textAlign =
-    node.layoutAlign === "MIN" && alignHorizontal !== "left"
+    alignHorizontal !== "left"
       ? `textAlign: TextAlign.${alignHorizontal}, `
       : "";
 
@@ -84,7 +63,7 @@ export const getTextStyle = (node: AltTextNode): string => {
   styleBuilder += flutterColor(node.fills);
 
   if (node.fontSize !== figma.mixed) {
-    styleBuilder += `fontSize: ${node.fontSize}, `;
+    styleBuilder += `fontSize: ${numToAutoFixed(node.fontSize)}, `;
   }
 
   if (node.textDecoration === "UNDERLINE") {
@@ -108,25 +87,11 @@ export const getTextStyle = (node: AltTextNode): string => {
     )}, `;
   }
 
-  if (node.letterSpacing !== figma.mixed && node.letterSpacing.value !== 0) {
-    if (node.letterSpacing.unit === "PIXELS") {
-      styleBuilder += `letterSpacing: ${node.letterSpacing.value}, `;
-    } else {
-      // node.letterSpacing.unit === "PERCENT"
-      // TODO test if end result is satisfatory
-      styleBuilder += `letterSpacing: ${node.letterSpacing.value / 10}, `;
-    }
+  // todo lineSpacing
+  const letterSpacing = commonLetterSpacing(node);
+  if (letterSpacing > 0) {
+    styleBuilder += `letterSpacing: ${numToAutoFixed(letterSpacing)}, `;
   }
-
-  // TODO this calculation is completely wrong
-  // if (node.lineHeight !== figma.mixed && node.lineHeight.value !== 0) {
-  //   if (node.lineHeight.unit === "PIXELS") {
-  //     // TODO test if end result is satisfatory
-  //     styleBuilder += `height: ${node.lineHeight.value}, `;
-  //   } else if (node.lineHeight.unit === "PERCENT") {
-  //     styleBuilder += `height: ${node.lineHeight.value / 100}, `;
-  //   }
-  // }
 
   return styleBuilder;
 };
@@ -137,44 +102,14 @@ export const wrapTextAutoResize = (
 ): string => {
   if (node.textAutoResize === "NONE") {
     // = instead of += because we want to replace it
-    return `SizedBox(width: ${node.width}, height: ${node.height}, child: ${child}),`;
+    return `SizedBox(width: ${numToAutoFixed(
+      node.width
+    )}, height: ${numToAutoFixed(node.height)}, child: ${child}),`;
   } else if (node.textAutoResize === "HEIGHT") {
     // if HEIGHT is set, it means HEIGHT will be calculated automatically, but width won't
     // = instead of += because we want to replace it
-    return `SizedBox(width: ${node.width}, child: ${child}),`;
+    return `SizedBox(width: ${numToAutoFixed(node.width)}, child: ${child}),`;
   }
 
   return child;
 };
-
-// export const wrapTextInsideAlign = (
-//   node: AltTextNode,
-//   child: string
-// ): string => {
-//   let alignment;
-//   if (node.layoutAlign === "CENTER") {
-//     if (node.textAlignHorizontal === "LEFT") alignment = "centerLeft";
-//     if (node.textAlignHorizontal === "RIGHT") alignment = "centerRight";
-//     if (node.textAlignHorizontal === "CENTER") alignment = "center";
-//     // no support for justified yet
-//   } else if (node.layoutAlign === "MAX") {
-//     if (node.textAlignHorizontal === "LEFT") alignment = "leftBottom";
-//     if (node.textAlignHorizontal === "RIGHT") alignment = "rightBottom";
-//     if (node.textAlignHorizontal === "CENTER") alignment = "centerBottom";
-//   }
-//   // [node.layoutAlign === "MIN"] is the default, so no need to specify it.
-//   if (!alignment) alignment = "center";
-
-//   // there are many ways to align a text
-//   if (node.textAlignVertical === "BOTTOM" && node.textAutoResize === "NONE") {
-//     alignment = "bottomCenter";
-//   }
-
-//   if (
-//     node.layoutAlign !== "MIN" ||
-//     (node.textAlignVertical === "BOTTOM" && node.textAutoResize === "NONE")
-//   ) {
-//     return `Align(alignment: Alignment.${alignment}, child: ${child}),`;
-//   }
-//   return child;
-// };

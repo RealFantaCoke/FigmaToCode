@@ -1,3 +1,4 @@
+import { AltFrameNode } from "./../../src/altNodes/altMixins";
 import { tailwindMain } from "../../src/tailwind/tailwindMain";
 import { createFigma } from "figma-api-stub";
 import { convertIntoAltNodes } from "../../src/altNodes/altConversion";
@@ -27,8 +28,8 @@ describe("AltConversions", () => {
     );
   });
 
-  it("Group", () => {
-    // todo verify if this is working as inteded.
+  it("Group wrapping single item", () => {
+    // single Group should disappear
     const node = figma.createFrame();
     node.resize(20, 20);
 
@@ -40,20 +41,48 @@ describe("AltConversions", () => {
     const convert = convertIntoAltNodes([node]);
 
     expect(tailwindMain(convert)).toEqual(
+      `<div class="w-5">
+<div class="w-full h-5"></div></div>`
+    );
+  });
+
+  it("Group wrapping two items", () => {
+    // single Group should disappear
+    const node = figma.createFrame();
+    node.resize(20, 20);
+
+    const rect1 = figma.createRectangle();
+    rect1.resize(20, 20);
+
+    const rect2 = figma.createRectangle();
+    rect2.resize(20, 20);
+
+    figma.group([rect1, rect2], node);
+
+    const convert = convertIntoAltNodes([node]);
+
+    expect(tailwindMain(convert)).toEqual(
       `<div class="inline-flex flex-col items-center justify-center">
-<div class="w-5 h-5"></div></div>`
+<div class="inline-flex flex-col items-center justify-center">
+<div class="w-5 h-5"></div>
+<div class="w-5 h-5"></div></div></div>`
     );
   });
 
   it("Text", () => {
     const node = figma.createText();
 
-    figma.loadFontAsync({ family: "Roboto", style: "Regular" });
+    figma.loadFontAsync({
+      family: "Roboto",
+      style: "Regular",
+    });
 
     node.fontName = { family: "Roboto", style: "Regular" };
     node.characters = "";
 
-    expect(tailwindMain(convertIntoAltNodes([node]))).toEqual(`<p></p>`);
+    expect(
+      tailwindMain(convertIntoAltNodes([node], new AltFrameNode()))
+    ).toEqual(`<p></p>`);
   });
 
   it("Ellipse", () => {
@@ -76,9 +105,9 @@ describe("AltConversions", () => {
     Object.defineProperty(node, "width", { value: 20 });
     Object.defineProperty(node, "height", { value: 20 });
 
-    expect(tailwindMain(convertIntoAltNodes([node]))).toEqual(
-      `<div class="w-5 h-5 rounded-full"></div>`
-    );
+    expect(
+      tailwindMain(convertIntoAltNodes([node], new AltFrameNode()))
+    ).toEqual(`<div class="w-5 h-5 rounded-full"></div>`);
   });
 
   it("Vector", () => {
@@ -103,9 +132,9 @@ describe("AltConversions", () => {
     Object.defineProperty(node, "width", { value: 20 });
     Object.defineProperty(node, "height", { value: 20 });
 
-    expect(tailwindMain(convertIntoAltNodes([node]))).toEqual(
-      `<div class="opacity-50 w-5 h-5"></div>`
-    );
+    expect(
+      tailwindMain(convertIntoAltNodes([node], new AltFrameNode()))
+    ).toEqual(`<div class="opacity-50 w-5 h-5"></div>`);
   });
 
   // todo add a test for EllipseNode, but there is no EllipseNode in figma-api-stubs!

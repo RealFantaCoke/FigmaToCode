@@ -1,12 +1,15 @@
 import { AltBlendMixin } from "../../altNodes/altMixins";
 import { AltLayoutMixin, AltSceneNode } from "../../altNodes/altMixins";
+import { numToAutoFixed } from "../../common/numToAutoFixed";
 
 /**
  * https://api.flutter.dev/flutter/widgets/Opacity-class.html
  */
 export const flutterOpacity = (node: AltBlendMixin, child: string): string => {
-  if (node.opacity !== undefined && node.opacity !== 1) {
-    return `Opacity(opacity: ${node.opacity}, child: ${child}),`;
+  if (node.opacity !== undefined && node.opacity !== 1 && child !== "") {
+    return `Opacity(opacity: ${numToAutoFixed(
+      node.opacity
+    )}, child: ${child}),`;
   }
   return child;
 };
@@ -20,7 +23,7 @@ export const flutterVisibility = (
 ): string => {
   // [when testing] node.visible can be undefined
 
-  if (node.visible !== undefined && node.visible === false) {
+  if (node.visible !== undefined && node.visible === false && child !== "") {
     return `Visibility(visible: ${node.visible}, child: ${child}),`;
   }
   return child;
@@ -35,10 +38,14 @@ export const flutterRotation = (
   node: AltLayoutMixin,
   child: string
 ): string => {
-  if (node.rotation !== undefined && node.rotation > 0) {
-    return `Transform.rotate(angle: ${
+  if (
+    node.rotation !== undefined &&
+    child !== "" &&
+    Math.round(node.rotation) !== 0
+  ) {
+    return `Transform.rotate(angle: ${numToAutoFixed(
       node.rotation * (-3.14159 / 180)
-    }, child: ${child})`;
+    )}, child: ${child})`;
   }
   return child;
 };

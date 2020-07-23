@@ -8,6 +8,7 @@ import {
 import { FlutterDefaultBuilder } from "./flutterDefaultBuilder";
 import { AltSceneNode } from "../altNodes/altMixins";
 import { FlutterTextBuilder } from "./flutterTextBuilder";
+import { numToAutoFixed } from "../common/numToAutoFixed";
 
 let parentId = "";
 let material = true;
@@ -55,21 +56,18 @@ const flutterWidgetGenerator = (
     }
 
     // if the parent is an AutoLayout, and itemSpacing is set, add a SizedBox between items.
-    // on else, comp = comp (return it to itself);
-    comp = addSpacingIfNeeded(node, comp, index, sceneLen);
+    // on else, comp += ""
+    comp += addSpacingIfNeeded(node, index, sceneLen);
   });
 
   return comp;
 };
 
 const flutterGroup = (node: AltGroupNode): string => {
-  // this needs to be called after CustomNode because widthHeight depends on it
   return flutterContainer(
     node,
     `Stack(children:[${flutterWidgetGenerator(node.children)}],),`
   );
-
-  // return builder.child;
 };
 
 const flutterContainer = (
@@ -81,7 +79,7 @@ const flutterContainer = (
   builder
     .createContainer(node, material)
     .blendAttr(node)
-    .containerPosition(node, parentId);
+    .position(node, parentId);
 
   return builder.child;
 };
@@ -92,9 +90,8 @@ const flutterText = (node: AltTextNode): string => {
   builder
     .createText(node)
     .blendAttr(node)
-    .textInAlign(node)
     .textAutoSize(node)
-    .containerPosition(node, parentId);
+    .position(node, parentId);
 
   return builder.child;
 };
@@ -102,7 +99,10 @@ const flutterText = (node: AltTextNode): string => {
 const flutterFrame = (node: AltFrameNode): string => {
   const children = flutterWidgetGenerator(node.children);
 
-  if (node.layoutMode !== "NONE") {
+  if (node.children.length === 1) {
+    // if there is only one child, there is no need for Container or Row. Padding works indepdently of them.
+    return flutterContainer(node, children);
+  } else if (node.layoutMode !== "NONE") {
     const rowColumn = makeRowColumn(node, children);
     return flutterContainer(node, rowColumn);
   } else {
@@ -114,12 +114,6 @@ const flutterFrame = (node: AltFrameNode): string => {
 
 const makeRowColumn = (node: AltFrameNode, children: string): string => {
   // ROW or COLUMN
-
-  // if there is only one child, there is no need for Container or Row. Padding works indepdently of them.
-  if (node.children.length === 1) {
-    return children;
-  }
-
   const rowOrColumn = node.layoutMode === "HORIZONTAL" ? "Row" : "Column";
 
   const mostFreq = mostFrequent(node.children.map((d) => d.layoutAlign));
@@ -146,20 +140,10 @@ export const mostFrequent = (arr: Array<string>): string | undefined => {
     .pop();
 };
 
-// TODO Vector support in Flutter is complicated.
-// const flutterVector = (node: VectorNode) => {
-//   return `\nCenter(
-//           child: Container(
-//           width: ${node.width},
-//           height: ${node.height},
-//           color: Color(0xffff0000),
-//         ),
-//       ),`;
-// };
+// TODO Vector support in Flutter is complicated. Currently, AltConversion converts it in a Rectangle.
 
 const addSpacingIfNeeded = (
   node: AltSceneNode,
-  comp: string,
   index: number,
   len: number
 ): string => {
@@ -168,12 +152,12 @@ const addSpacingIfNeeded = (
     // Don't add the SizedBox at last value. In Figma, itemSpacing CAN be negative; here it can't.
     if (node.parent.itemSpacing > 0 && index < len - 1) {
       if (node.parent.layoutMode === "HORIZONTAL") {
-        return `${comp} SizedBox(width: ${node.parent.itemSpacing}),`;
+        return ` SizedBox(width: ${numToAutoFixed(node.parent.itemSpacing)}),`;
       } else {
         // node.parent.layoutMode === "VERTICAL"
-        return `${comp} SizedBox(height: ${node.parent.itemSpacing}),`;
+        return ` SizedBox(height: ${numToAutoFixed(node.parent.itemSpacing)}),`;
       }
     }
   }
-  return comp;
+  return "";
 };

@@ -18,10 +18,10 @@ export const convertToAutoLayout = (
       node.children.length > 0) ||
     node.type === "GROUP"
   ) {
-    // [reorderChildrenIfAligned] and [detectAutoLayoutDirection] are very similar,
-    // but merging them together would result in too much nesting.
-    node.children = reorderChildrenIfAligned(node.children);
-    const [direction, itemSpacing] = detectAutoLayoutDirection(node.children);
+    const [orderedChildren, direction, itemSpacing] = reorderChildrenIfAligned(
+      node.children
+    );
+    node.children = orderedChildren;
 
     if (direction === "NONE" && node.children.length > 1) {
       node.isRelative = true;
@@ -48,8 +48,11 @@ export const convertToAutoLayout = (
 
     // todo while this is similar to Figma, verify if this is good enough or if padding should be allowed in all four directions.
     const padding = detectAutoLayoutPadding(node);
-    node.verticalPadding = padding.vertical;
-    node.horizontalPadding = padding.horizontal;
+
+    node.paddingTop = padding.top;
+    node.paddingBottom = padding.bottom;
+    node.paddingLeft = padding.left;
+    node.paddingRight = padding.right;
 
     // update the layoutAlign attribute for every child
     node.children = node.children.map((d) => {
@@ -82,64 +85,59 @@ const threshold = -2;
  */
 const reorderChildrenIfAligned = (
   children: ReadonlyArray<AltSceneNode>
-): Array<AltSceneNode> => {
+): [Array<AltSceneNode>, "HORIZONTAL" | "VERTICAL" | "NONE", number] => {
   if (children.length === 1) {
-    return [...children];
+    return [[...children], "NONE", 0];
   }
 
-  const intervalY = calculateInterval(children, "y");
-
   const updateChildren = [...children];
+  const [visit, avg] = shouldVisit(updateChildren);
 
   // check against a threshold
-  if (average(intervalY) > threshold) {
+  if (visit === "VERTICAL") {
     // if all elements are horizontally aligned
-    return updateChildren.sort((a, b) => a.y - b.y);
+    return [updateChildren.sort((a, b) => a.y - b.y), "VERTICAL", avg];
   } else {
-    const intervalX = calculateInterval(children, "x");
-
-    if (average(intervalX) > threshold) {
+    if (visit === "HORIZONTAL") {
       // if all elements are vertically aligned
-      return updateChildren.sort((a, b) => a.x - b.x);
+      return [updateChildren.sort((a, b) => a.x - b.x), "HORIZONTAL", avg];
     }
   }
 
-  return updateChildren;
+  return [updateChildren, "NONE", 0];
+};
+
+/**
+ * Checks if layout is horizontally or vertically aligned.
+ * First verify if all items are vertically aligned in Y axis (spacing > 0), then for X axis, then the average for Y and finally the average for X.
+ * If no correspondence is found, returns "NONE".
+ * In a previous version, it used a "standard deviation", but "average" performed better.
+ */
+const shouldVisit = (
+  children: ReadonlyArray<AltSceneNode>
+): ["HORIZONTAL" | "VERTICAL" | "NONE", number] => {
+  const intervalY = calculateInterval(children, "y");
+  const intervalX = calculateInterval(children, "x");
+
+  const avgX = average(intervalX);
+  const avgY = average(intervalY);
+
+  if (!intervalY.every((d) => d >= threshold)) {
+    if (!intervalX.every((d) => d >= threshold)) {
+      if (avgY <= threshold) {
+        if (avgX <= threshold) {
+          return ["NONE", 0];
+        }
+        return ["HORIZONTAL", avgX];
+      }
+      return ["VERTICAL", avgY];
+    }
+    return ["HORIZONTAL", avgX];
+  }
+  return ["VERTICAL", avgY];
 };
 
 // todo improve this method to try harder. Idea: maybe use k-means or hierarchical cluster?
-/**
- * The method to detect the direction.
- * Currently, it uses the average position of children's position.
- * In a previous version, it used a "standard deviation", but "average" performed better.
- */
-const detectAutoLayoutDirection = (
-  children: ReadonlyArray<AltSceneNode>
-): ["NONE" | "HORIZONTAL" | "VERTICAL", number] => {
-  // check if elements are vertically aligned
-  const intervalY = calculateInterval(children, "y");
-
-  // console.log("intervalY:", intervalY);
-  if (intervalY.length === 0) {
-    return ["NONE", 0];
-  }
-
-  // check if elements are vertically aligned
-  const avgY = average(intervalY);
-  if (avgY >= threshold) {
-    return ["VERTICAL", avgY];
-  } else {
-    // check if elements are horizontally aligned
-    const intervalX = calculateInterval(children, "x");
-    const avgX = average(intervalX);
-
-    if (avgX >= threshold) {
-      return ["HORIZONTAL", avgX];
-    }
-  }
-
-  return ["NONE", 0];
-};
 
 /**
  * This function calculates the distance (interval) between items.
@@ -171,8 +169,10 @@ const calculateInterval = (
 const detectAutoLayoutPadding = (
   node: AltFrameNode
 ): {
-  horizontal: number;
-  vertical: number;
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
 } => {
   // this need to be run before VERTICAL or HORIZONTAL
   if (node.children.length === 1) {
@@ -187,8 +187,10 @@ const detectAutoLayoutPadding = (
 
     // return the smallest padding in each axis
     return {
-      horizontal: Math.min(left, right),
-      vertical: Math.min(top, bottom),
+      left: left,
+      right: right,
+      top: top,
+      bottom: bottom,
     };
   } else if (node.layoutMode === "VERTICAL") {
     // top padding is first element's y value
@@ -208,8 +210,10 @@ const detectAutoLayoutPadding = (
 
     // return the smallest padding in each axis
     return {
-      horizontal: Math.min(left, right),
-      vertical: Math.min(top, bottom),
+      left: left,
+      right: right,
+      top: top,
+      bottom: bottom,
     };
   } else {
     // node.layoutMode === "HORIZONTAL"
@@ -231,8 +235,10 @@ const detectAutoLayoutPadding = (
 
     // return the smallest padding in each axis
     return {
-      horizontal: Math.min(left, right),
-      vertical: Math.min(top, bottom),
+      left: left,
+      right: right,
+      top: top,
+      bottom: bottom,
     };
   }
 };
@@ -250,12 +256,12 @@ const layoutAlignInChild = (
     const nodeCenteredPosX = node.x + node.width / 2;
     const parentCenteredPosX = parentNode.width / 2;
 
-    const marginX = nodeCenteredPosX - parentCenteredPosX;
+    const paddingX = nodeCenteredPosX - parentCenteredPosX;
 
     // allow a small threshold
-    if (marginX < -4) {
+    if (paddingX < -4) {
       return "MIN";
-    } else if (marginX > 4) {
+    } else if (paddingX > 4) {
       return "MAX";
     } else {
       return "CENTER";
@@ -266,12 +272,12 @@ const layoutAlignInChild = (
     const nodeCenteredPosY = node.y + node.height / 2;
     const parentCenteredPosY = parentNode.height / 2;
 
-    const marginY = nodeCenteredPosY - parentCenteredPosY;
+    const paddingY = nodeCenteredPosY - parentCenteredPosY;
 
     // allow a small threshold
-    if (marginY < -4) {
+    if (paddingY < -4) {
       return "MIN";
-    } else if (marginY > 4) {
+    } else if (paddingY > 4) {
       return "MAX";
     } else {
       return "CENTER";

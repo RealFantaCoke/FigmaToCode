@@ -48,43 +48,16 @@ const tailwindWidgetGenerator = (
       comp += tailwindContainer(node, "");
     } else if (node.type === "GROUP") {
       comp += tailwindGroup(node);
-    } else if (
-      node.type === "FRAME"
-      //  || node.type === "INSTANCE" ||
-      // node.type === "COMPONENT"
-    ) {
+    } else if (node.type === "FRAME") {
       comp += tailwindFrame(node);
     } else if (node.type === "TEXT") {
       comp += tailwindText(node);
     }
     // todo support Line
-    // else if (node.type === "LINE") {
-    // comp += tailwindLine(node);
-    // }
   });
 
   return comp;
 };
-
-// const tailwindLine = (node: LineNode): string => {
-//   // todo Height is always zero on Lines
-//   const builder = new tailwindAttributesBuilder("", isJsx, node.visible)
-//     .visibility(node)
-//     .widthHeight(node)
-//     .containerPosition(node, parentId)
-//     .layoutAlign(node, parentId)
-//     .opacity(node)
-//     .rotation(node)
-//     .shadow(node)
-//     .customColor(node.strokes, "border")
-//     .borderWidth(node)
-//     .borderRadius(node);
-
-//   if (builder.attributes) {
-//     return `\n<div ${builder.buildAttributes()}></div>`;
-//   }
-//   return "";
-// };
 
 const tailwindGroup = (node: AltGroupNode): string => {
   // ignore the view when size is zero or less
@@ -101,8 +74,8 @@ const tailwindGroup = (node: AltGroupNode): string => {
   // this needs to be called after CustomNode because widthHeight depends on it
   const builder = new TailwindDefaultBuilder(isJsx, node, showLayerName)
     .blend(node)
-    .position(node, parentId)
-    .widthHeight(node);
+    .widthHeight(node)
+    .position(node, parentId);
 
   if (builder.attributes || builder.style) {
     const attr = builder.build("relative ");
@@ -117,8 +90,8 @@ const tailwindText = (node: AltTextNode): string => {
 
   const builderResult = new TailwindTextBuilder(isJsx, node, showLayerName)
     .blend(node)
-    .position(node, parentId)
     .textAutoSize(node)
+    .position(node, parentId)
     // todo fontFamily (via node.fontName !== figma.mixed ? `fontFamily: ${node.fontName.family}`)
     // todo font smoothing
     .fontSize(node)
@@ -135,7 +108,7 @@ const tailwindText = (node: AltTextNode): string => {
   const splittedChars = node.characters.split("\n");
   const charsWithLineBreak =
     splittedChars.length > 1
-      ? node.characters.split("\n").join("</br>")
+      ? node.characters.split("\n").join("<br/>")
       : node.characters;
 
   return `<p${builderResult}>${charsWithLineBreak}</p>`;
@@ -175,8 +148,8 @@ export const tailwindContainer = (
   const builder = new TailwindDefaultBuilder(isJsx, node, showLayerName)
     .blend(node)
     .autoLayoutPadding(node)
-    .position(node, parentId)
     .widthHeight(node)
+    .position(node, parentId)
     .customColor(node.fills, "bg")
     // TODO image and gradient support (tailwind does not support gradients)
     .shadow(node)
@@ -223,12 +196,21 @@ export const rowColumnProps = (node: AltFrameNode): string => {
       ? `space-${spaceDirection}-${spacing} `
       : "";
 
-  // align according to the most frequent way the children are aligned.
-  // todo layoutAlign should go to individual fields and this should be threated as an optimization
-  // const layoutAlign =
-  //   mostFrequentString(node.children.map((d) => d.layoutAlign)) === "MIN"
-  //     ? ""
-  //     : "items-center ";
+  // special case when there is only one children; need to position correctly in Flex.
+  let justify = "justify-center";
+  if (node.children.length === 1) {
+    const nodeCenteredPosX = node.children[0].x + node.children[0].width / 2;
+    const parentCenteredPosX = node.width / 2;
+
+    const marginX = nodeCenteredPosX - parentCenteredPosX;
+
+    // allow a small threshold
+    if (marginX < -4) {
+      justify = "justify-start";
+    } else if (marginX > 4) {
+      justify = "justify-end";
+    }
+  }
 
   // [optimization]
   // when all children are STRETCH and layout is Vertical, align won't matter. Otherwise, center it.
@@ -236,7 +218,7 @@ export const rowColumnProps = (node: AltFrameNode): string => {
     node.layoutMode === "VERTICAL" &&
     node.children.every((d) => d.layoutAlign === "STRETCH")
       ? ""
-      : "items-center justify-center ";
+      : `items-center ${justify} `;
 
   // if parent is a Frame with AutoLayout set to Vertical, the current node should expand
   const flex =

@@ -1,3 +1,4 @@
+import { AltFrameNode } from "./../../src/altNodes/altMixins";
 import {
   TailwindTextBuilder,
   convertFontWeight,
@@ -5,7 +6,7 @@ import {
 import { tailwindMain } from "../../src/tailwind/tailwindMain";
 import { AltTextNode } from "../../src/altNodes/altMixins";
 
-describe("AltText", () => {
+describe("Tailwind Text", () => {
   // @ts-ignore for some reason, need to override this for figma.mixed to work
   global.figma = {
     mixed: undefined,
@@ -87,19 +88,24 @@ describe("AltText", () => {
     node.characters = "";
     node.width = 16;
     node.height = 16;
+    node.fontSize = 24;
     node.textAutoResize = "WIDTH_AND_HEIGHT";
 
     node.letterSpacing = {
       value: 110,
       unit: "PERCENT",
     };
-    expect(tailwindMain([node])).toEqual('<p class="tracking-widest"></p>');
+    expect(tailwindMain([node])).toEqual(
+      '<p class="text-2xl tracking-widest"></p>'
+    );
 
     node.letterSpacing = {
       value: 10,
       unit: "PIXELS",
     };
-    expect(tailwindMain([node])).toEqual('<p class="tracking-widest"></p>');
+    expect(tailwindMain([node])).toEqual(
+      '<p class="text-2xl tracking-widest"></p>'
+    );
   });
 
   it("lineHeight", () => {
@@ -108,18 +114,21 @@ describe("AltText", () => {
     node.width = 16;
     node.height = 16;
     node.textAutoResize = "WIDTH_AND_HEIGHT";
+    node.fontSize = 24;
 
     node.lineHeight = {
       value: 110,
       unit: "PERCENT",
     };
-    expect(tailwindMain([node])).toEqual('<p class="leading-none"></p>');
+    expect(tailwindMain([node])).toEqual(
+      '<p class="text-2xl leading-relaxed"></p>'
+    );
 
     node.lineHeight = {
       value: 10,
       unit: "PIXELS",
     };
-    expect(tailwindMain([node])).toEqual('<p class="leading-3"></p>');
+    expect(tailwindMain([node])).toEqual('<p class="text-2xl leading-3"></p>');
   });
 
   it("textCase", () => {
@@ -163,7 +172,9 @@ describe("AltText", () => {
     expect(convertFontWeight("Regular")).toEqual("400");
     expect(convertFontWeight("Medium")).toEqual("500");
     expect(convertFontWeight("Semi Bold")).toEqual("600");
+    expect(convertFontWeight("SemiBold")).toEqual("600");
     expect(convertFontWeight("Bold")).toEqual("700");
+    expect(convertFontWeight("Heavy")).toEqual("800");
     expect(convertFontWeight("Extra Bold")).toEqual("800");
     expect(convertFontWeight("Black")).toEqual("900");
   });

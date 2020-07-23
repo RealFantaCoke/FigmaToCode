@@ -56,9 +56,9 @@ describe("Convert to AutoLayout", () => {
 
     // output should be HORIZONTAL
     expect(tailwindMain([convertToAutoLayout(frame)])).toEqual(
-      `<div class="inline-flex items-center justify-center">
-<div class="self-start w-5 h-5 bg-red-700"></div>
-<div class="self-start w-5 h-5 bg-green-600"></div></div>`
+      `<div class="inline-flex items-center justify-center pr-2 pb-8 w-12 h-12">
+<div class="w-1/2 h-5 self-start bg-red-700"></div>
+<div class="w-1/2 h-5 self-start bg-green-600"></div></div>`
     );
 
     // output should be VERTICAL
@@ -68,9 +68,9 @@ describe("Convert to AutoLayout", () => {
     frame.children = [node2, node1];
 
     expect(tailwindMain([convertToAutoLayout(frame)])).toEqual(
-      `<div class="inline-flex flex-col items-center justify-center">
-<div class="self-start w-5 h-5 bg-red-700"></div>
-<div class="self-start w-5 h-5 bg-green-600"></div></div>`
+      `<div class="inline-flex flex-col items-center justify-center pr-8 pb-2 w-12">
+<div class="w-full h-5 self-start bg-red-700"></div>
+<div class="w-full h-5 self-start bg-green-600"></div></div>`
     );
 
     // horizontally align while vertical
@@ -82,9 +82,9 @@ describe("Convert to AutoLayout", () => {
     frame.children = [node2, node1];
 
     expect(tailwindMain([convertToAutoLayout(frame)])).toEqual(
-      `<div class="inline-flex flex-col space-y-1 items-center justify-center w-12">
+      `<div class="inline-flex flex-col space-y-1 items-center justify-center pb-1 w-12">
 <div class="w-full h-5 bg-red-700"></div>
-<div class="self-end w-5 h-5 bg-green-600"></div></div>`
+<div class="w-5 h-5 self-end bg-green-600"></div></div>`
     );
 
     // vertically align while horizontal
@@ -97,9 +97,9 @@ describe("Convert to AutoLayout", () => {
     frame.children = [node2, node1];
 
     expect(tailwindMain([convertToAutoLayout(frame)])).toEqual(
-      `<div class="inline-flex items-center justify-center">
-<div class="w-5 h-12 bg-red-700"></div>
-<div class="self-end w-5 h-5 bg-green-600"></div></div>`
+      `<div class="inline-flex items-center justify-center pr-2 w-12 h-12">
+<div class="w-1/2 h-12 bg-red-700"></div>
+<div class="w-1/2 h-5 self-end bg-green-600"></div></div>`
     );
 
     node1.height = 20;
@@ -112,8 +112,48 @@ describe("Convert to AutoLayout", () => {
 
     expect(tailwindMain([convertToAutoLayout(frame)])).toEqual(
       `<div class="relative" style="width: 50px; height: 50px;">
-<div class="absolute w-5 h-5 bg-green-600" style="left:10px; top:10px;"></div>
-<div class="absolute left-0 top-0 w-5 h-5 bg-red-700"></div></div>`
+<div class="w-5 h-5 absolute bg-green-600" style="left: 10px; top: 10px;"></div>
+<div class="w-5 h-5 absolute left-0 top-0 bg-red-700"></div></div>`
     );
+  });
+
+  it("Trigger avgX", () => {
+    const frame = new AltFrameNode();
+    frame.x = 0;
+    frame.y = 0;
+    frame.width = 50;
+    frame.height = 50;
+    frame.layoutMode = "NONE";
+
+    const node1 = new AltRectangleNode();
+    node1.x = 0;
+    node1.y = 0;
+    node1.width = 20;
+    node1.height = 20;
+    node1.parent = frame;
+
+    const node2 = new AltRectangleNode();
+    node2.x = 16;
+    node2.y = 0;
+    node2.width = 20;
+    node2.height = 20;
+    node2.parent = frame;
+
+    const node3 = new AltRectangleNode();
+    node3.x = 40;
+    node3.y = 0;
+    node3.width = 20;
+    node3.height = 20;
+    node3.parent = frame;
+
+    // initially they are not ordered. ConvertToAutoLayout will also order them.
+    frame.children = [node3, node2, node1];
+
+    // output should be HORIZONTAL
+    expect(tailwindMain([convertToAutoLayout(frame)]))
+      .toEqual(`<div class="inline-flex items-center justify-center pb-8 w-12 h-12\">
+<div class="w-1/3 h-5 self-start"></div>
+<div class="w-1/3 h-5 self-start"></div>
+<div class="w-1/3 h-5 self-start"></div></div>`);
   });
 });

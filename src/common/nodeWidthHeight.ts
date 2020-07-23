@@ -63,6 +63,7 @@ export const nodeWidthHeight = (
 
   // avoid relative width when parent is relative (therefore, child is probably absolute, which doesn't work nice)
   // ignore for root layer
+  // todo should this be kept this way? The issue is w-full which doesn't work well with absolute position.
   if (allowRelative && node.parent?.isRelative !== true) {
     const rW = calculateResponsiveW(node, nodeWidth);
 
@@ -89,8 +90,9 @@ export const nodeWidthHeight = (
     let hPadding = 0;
     let vPadding = 0;
     if ("layoutMode" in node) {
-      hPadding = 2 * (node.horizontalPadding ?? 0);
-      vPadding = 2 * (node.verticalPadding ?? 0);
+      // todo: horizontal became left and right, this almost always returns true. Is this the desired behavior? Is there a way to optimise?
+      hPadding = (node.paddingLeft ?? 0) + (node.paddingRight ?? 0);
+      vPadding = (node.paddingTop ?? 0) + (node.paddingBottom ?? 0);
     }
 
     // set them independently, in case w is equal but h isn't
@@ -244,10 +246,11 @@ const calculateResponsiveW = (
   if (
     node.parent &&
     "layoutMode" in node.parent &&
-    node.parent.horizontalPadding &&
+    (node.parent.paddingLeft || node.parent.paddingRight) &&
     node.parent.layoutMode !== "NONE"
   ) {
-    parentWidth = node.parent.width - node.parent.horizontalPadding * 2;
+    parentWidth =
+      node.parent.width - node.parent.paddingLeft - node.parent.paddingRight;
     // currently ignoring h-full
   } else {
     parentWidth = node.parent.width;
